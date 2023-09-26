@@ -1,137 +1,173 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
+using TMPro;
 using UnityEngine;
+using UnityEngine.Events;
+using UnityEngine.UI;
 
 public class FreddyManager : MonoBehaviour
 {
     public static FreddyManager Instance;
+    public Button Phone;
+    public bool PhonePressed;
+    public Button Talk;
+    public bool TalkPressed;
 
-    public State CurrentState = State.Idle;
-    public string PlayerState = "Idle";
+    private SpriteRenderer spriteRenderer;
+
+    public List<Sprite> sprites;
+
+    private State m_currentState;
+
+    private bool waiting;
+
+    public State CurrentState
+    {
+        get
+        {
+            return m_currentState;
+        }
+        set
+        {
+            m_currentState = value;
+            spriteRenderer.sprite = GetSprite(value);
+            Debug.Log("Freddy: " + value.ToString());
+        }
+    }
 
     void Start()
     {
         Instance = this;
+        spriteRenderer = GetComponent<SpriteRenderer>();
+        //LoadSprites();
+        CurrentState = State.Idle;
+        Debug.Log("Player: idle");
+        Phone.onClick.AddListener(new UnityAction(() => { this.PhonePressed = true; }));
+        Talk.onClick.AddListener(new UnityAction(() => { this.TalkPressed = true; }));
+        StartCoroutine("Coroutine");
     }
 
-    void Update()
+    private void LoadSprites()
     {
-        
+        this.sprites = new List<Sprite>();
+        foreach (State state in Enum.GetValues(typeof(State)))
+        {
+            var path = Enum.GetName(typeof(State), state) + ".png";
+            Debug.LogWarning($"Trying to load file \"{path}\"");
+            this.sprites.Add(Resources.Load<Sprite>(path));
+        }
     }
 
-    private void OnGUI()
+    private Sprite GetSprite(State state)
     {
-        GUILayout.BeginVertical();
-        if (GUILayout.Button("Phone"))
-        {
-            CallPhone();
-        }
-        if (GUILayout.Button("Talk"))
-        {
-            PlayerTalk();
-        }
-        GUILayout.Button("Silence");
-        GUILayout.Label($"Freddy state:{this.CurrentState}");
-        GUILayout.Label($"Player state:{this.PlayerState}");
-        GUILayout.EndVertical();
+        return this.sprites[(int)state];
     }
 
-    private void PlayerTalk()
+    private IEnumerator Coroutine()
     {
-        if (this.CurrentState == State.Idle)
+        int merda = 0;
+        while (true)
         {
-            MockPlayer();
-        }
-        else if (this.CurrentState == State.TakingPhone)
-        {
-            this.CurrentState = State.Listening;
-            //yield return new WaitForSeconds(1f);
-            if (UnityEngine.Random.Range(0, 100 / 25) == 0)
+            merda++;
+            if (PhonePressed)
             {
-                DropPhone();
+                PhonePressed = false;
+                Debug.Log("Player: Calling...");
+                this.CurrentState = State.IgnoringPhone;
+                do
+                {
+                    if (UnityEngine.Random.Range(0, 100 / 25) == 0)
+                    {
+                        this.CurrentState = State.TakingPhone;
+                    }
+                    else
+                    {
+                        Debug.Log("Player: Nope...");
+                    }
+                    yield return new WaitForSeconds(0.5f);
+                }
+                while (this.CurrentState != State.TakingPhone);
+                Debug.Log("Player: Waiting to talk");
             }
-            else
+            if (TalkPressed)
             {
-                AnswerPlayer();
+                TalkPressed = false;
+                if (this.CurrentState == State.Idle)
+                {
+                    this.CurrentState = State.Mocking;
+                    yield return new WaitForSeconds(1f);
+                    this.CurrentState = State.Idle;
+                }
+                else if (this.CurrentState == State.TakingPhone)
+                {
+                    this.CurrentState = State.Listening;
+                    yield return new WaitForSeconds(1f);
+                    if (UnityEngine.Random.Range(0, 100 / 25) == 0)
+                    {
+                        this.CurrentState = State.DroppingPhone;
+                        yield return new WaitForSeconds(1f);
+                        this.CurrentState = State.Idle;
+                    }
+                    else
+                    {
+                        if (UnityEngine.Random.Range(0, 5) == 0)
+                        {
+                            Debug.Log("Player: Laugh");
+                            this.CurrentState = State.AnsweringLaugh;
+                            yield return new WaitForSeconds(1f);
+                        }
+                        else if (UnityEngine.Random.Range(0, 5) == 0)
+                        {
+                            Debug.Log("Player: No");
+                            this.CurrentState = State.AnsweringNo;
+                            yield return new WaitForSeconds(1f);
+                        }
+                        else if (UnityEngine.Random.Range(0, 5) == 0)
+                        {
+                            Debug.Log("Player: Mock");
+                            this.CurrentState = State.AnsweringEw;
+                            yield return new WaitForSeconds(1f);
+                        }
+                        else if (UnityEngine.Random.Range(0, 5) == 0)
+                        {
+                            Debug.Log("Player: Drop");
+                            this.CurrentState = State.DroppingPhone;
+                            yield return new WaitForSeconds(1f);
+                        }
+                        else
+                        {
+                            Debug.Log("Player: Yes");
+                            this.CurrentState = State.AnsweringYes;
+                            yield return new WaitForSeconds(1f);
+                        }
+                        this.CurrentState = State.Idle;
+                    }
+                }
             }
-        }
-    }
-
-    private void AnswerPlayer()
-    {
-        if (UnityEngine.Random.Range(0, 3) == 0)
-        {
-            AnswerYes();
-        }
-        else if (UnityEngine.Random.Range(0, 3) == 0)
-        {
-            AnswerNo();
-        }
-        else
-        {
-            AnswerMock();
-        }
-    }
-
-    private void AnswerMock()
-    {
-        this.PlayerState = "Mock";
-        //yield return new WaitForSeconds(1f);
-    }
-
-    private void AnswerNo()
-    {
-        this.PlayerState = "No";
-        //yield return new WaitForSeconds(1f);
-    }
-
-    private void AnswerYes()
-    {
-        this.PlayerState = "Yes";
-        //yield return new WaitForSeconds(1f);
-    }
-
-    private void DropPhone()
-    {
-        this.CurrentState = State.DroppingPhone;
-        //yield return new WaitForSeconds(1f);
-        this.CurrentState = State.Idle;
-    }
-
-    private void MockPlayer()
-    {
-        this.CurrentState = State.Mocking;
-        //yield return new WaitForSeconds(1f);
-        this.CurrentState = State.Idle;
-    }
-
-    private void CallPhone()
-    {
-        this.PlayerState = "Calling...";
-        do
-        {
-            if (UnityEngine.Random.Range(0, 100 / 25) == 0)
+            else if (this.CurrentState == State.TakingPhone && UnityEngine.Random.Range(0, 100 / 1) == 0)
             {
-                this.CurrentState = State.TakingPhone;
+                Debug.Log("Player: Drop");
+                this.CurrentState = State.DroppingPhone;
+                yield return new WaitForSeconds(1f);
             }
-            else
-            {
-                this.PlayerState = "Nope...";
-            }
-            //yield return new WaitForSeconds(0.5f);
+            //Input.GetKeyDown(KeyCode.S);
+            yield return new WaitForEndOfFrame();
         }
-        while (this.CurrentState != State.TakingPhone);
-        this.PlayerState = "Waiting to talk";
     }
 
     public enum State
     {
         Idle,
         Mocking,
+        IgnoringPhone,
         TakingPhone,
         Listening,
-        Answering,
+        AnsweringYes,
+        AnsweringNo,
+        AnsweringEw,
+        AnsweringLaugh,
         DroppingPhone
     }
 }

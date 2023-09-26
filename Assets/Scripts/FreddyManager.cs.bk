@@ -1,0 +1,148 @@
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using TMPro;
+using UnityEngine;
+
+public class FreddyManager : MonoBehaviour
+{
+    public static FreddyManager Instance;
+
+    private State m_currentState;
+
+    public State CurrentState
+    {
+        get
+        {
+            return m_currentState;
+        }
+        set
+        {
+            m_currentState = value;
+            Debug.Log("Freddy: " + value.ToString());
+        }
+    }
+
+    void Start()
+    {
+        Instance = this;
+        CurrentState = State.Idle;
+        Debug.Log("Player: idle");
+        StartCoroutine("Coroutine");
+    }
+
+    private IEnumerator Coroutine()
+    {
+        while (true)
+        {
+            if (Input.GetKeyDown(KeyCode.P))
+            {
+                StartCoroutine("CallPhone");
+            }
+            if (Input.GetKeyDown(KeyCode.T))
+            {
+                StartCoroutine("PlayerTalk");
+            }
+            Input.GetKeyDown(KeyCode.S);
+            yield return new WaitForEndOfFrame();
+        }
+    }
+
+    private IEnumerator PlayerTalk()
+    {
+        if (this.CurrentState == State.Idle)
+        {
+            StartCoroutine("MockPlayer");
+        }
+        else if (this.CurrentState == State.TakingPhone)
+        {
+            this.CurrentState = State.Listening;
+            yield return new WaitForSeconds(1f);
+            if (UnityEngine.Random.Range(0, 100 / 25) == 0)
+            {
+                StartCoroutine("DropPhone");
+            }
+            else
+            {
+                AnswerPlayer();
+            }
+        }
+    }
+
+    private void AnswerPlayer()
+    {
+        if (UnityEngine.Random.Range(0, 3) == 0)
+        {
+            StartCoroutine("AnswerYes");
+        }
+        else if (UnityEngine.Random.Range(0, 3) == 0)
+        {
+            StartCoroutine("AnswerNo");
+        }
+        else
+        {
+            StartCoroutine("AnswerMock");
+        }
+    }
+
+    private IEnumerator AnswerMock()
+    {
+        Debug.Log("Player: Mock");
+        yield return new WaitForSeconds(1f);
+    }
+
+    private IEnumerator AnswerNo()
+    {
+        Debug.Log("Player: No");
+        yield return new WaitForSeconds(1f);
+    }
+
+    private IEnumerator AnswerYes()
+    {
+        Debug.Log("Player: Yes");
+        yield return new WaitForSeconds(1f);
+    }
+
+    private IEnumerator DropPhone()
+    {
+        this.CurrentState = State.DroppingPhone;
+        yield return new WaitForSeconds(1f);
+        this.CurrentState = State.Idle;
+    }
+
+    private IEnumerator MockPlayer()
+    {
+        this.CurrentState = State.Mocking;
+        yield return new WaitForSeconds(1f);
+        this.CurrentState = State.Idle;
+    }
+
+    private IEnumerator CallPhone()
+    {
+        Debug.Log("Player: Calling...");
+        do
+        {
+            if (UnityEngine.Random.Range(0, 100 / 25) == 0)
+            {
+                this.CurrentState = State.TakingPhone;
+            }
+            else
+            {
+                Debug.Log("Player: Nope...");
+            }
+            yield return new WaitForSeconds(0.5f);
+        }
+        while (this.CurrentState != State.TakingPhone);
+        Debug.Log("Player: Waiting to talk");
+    }
+
+    public enum State
+    {
+        Idle,
+        Mocking,
+        TakingPhone,
+        Listening,
+        Answering,
+        DroppingPhone
+    }
+}
